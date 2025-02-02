@@ -31,4 +31,6 @@ public class UserRequest {
     private String alternativePhoneNumber;
 
     private String status;
+
+    private String passcode;
 }

@@ -62,6 +62,7 @@ public class UserServiceImpl implements UserService{
                 .phoneNumber(userRequest.getPhoneNumber())
                 .alternativePhoneNumber(userRequest.getAlternativePhoneNumber())
                 .status("ACTIVE")
+                .passcode(userRequest.getPasscode())
                 .build();
 
         User saveduser = userRepository.save(user);
@@ -69,7 +70,7 @@ public class UserServiceImpl implements UserService{
                 .recipient(saveduser.getEmail())
                 .subject("Account creation")
                 .messageBody("congratulations ! your account has been created successfully.\nYour Account Details: \n" +
-                        "Account Name" + saveduser.getFirstName() + " " + saveduser.getLastName() + "\n Account number" + saveduser.getAccountNumber())
+                        "Account Name : " + saveduser.getFirstName() + " " + saveduser.getLastName() + "\n Account number : " + saveduser.getAccountNumber() + "\n Passcode : " + saveduser.getPasscode())
                 .build();
         emailService.sendEmailAlert(emailDetails);
         return BankResponse.builder()
