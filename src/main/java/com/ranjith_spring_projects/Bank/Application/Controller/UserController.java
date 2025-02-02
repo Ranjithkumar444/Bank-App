@@ -2,6 +2,7 @@ package com.ranjith_spring_projects.Bank.Application.Controller;
 
 import com.ranjith_spring_projects.Bank.Application.Dto.BalanceRequest;
 import com.ranjith_spring_projects.Bank.Application.Dto.BankResponse;
+import com.ranjith_spring_projects.Bank.Application.Dto.CreditRequest;
 import com.ranjith_spring_projects.Bank.Application.Dto.UserRequest;
 import com.ranjith_spring_projects.Bank.Application.Service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +30,12 @@ public class UserController {
                                    @RequestHeader("Authorization") String token) {
         token = token.substring(7); // Remove "Bearer " prefix
         return userService.balanceCheck(balanceRequest, token);
+    }
+
+    @PostMapping("/credit")
+    public String creditAmount(@RequestBody CreditRequest creditRequest,@RequestHeader("Authorization") String token){
+        token = token.substring(7);
+        return userService.creditMoney(creditRequest,token);
     }
 
 }

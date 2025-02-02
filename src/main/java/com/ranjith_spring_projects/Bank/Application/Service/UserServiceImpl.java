@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 
 @Service
 public class UserServiceImpl implements UserService{
@@ -101,6 +102,44 @@ public class UserServiceImpl implements UserService{
 
         // Return the account balance
         return user.getAccountBalance();
+    }
+
+    @Override
+    public String creditMoney(CreditRequest creditRequest, String token) {
+        String username = jwtService.extractUserName(token);
+        if (username == null) {
+            throw new RuntimeException("User not authenticated.");
+        }
+
+        // Fetch users by account number
+        User fromuser = userRepository.findByAccountNumber(creditRequest.getFromAccountNumber())
+                .orElseThrow(() -> new RuntimeException("Invalid Account from"));
+
+        User touser = userRepository.findByAccountNumber(creditRequest.getToAccountNumber())
+                .orElseThrow(() -> new RuntimeException("Invalid Account to"));
+
+        // Validate passcode and check balance
+        if (fromuser.getPasscode().equals(creditRequest.getPasscode())) {
+            if (fromuser.getAccountBalance().compareTo(creditRequest.getAmount()) >= 0) {
+                // Debit the from user's account
+                BigDecimal debitfrom = fromuser.getAccountBalance().subtract(creditRequest.getAmount());
+                fromuser.setAccountBalance(debitfrom);
+
+                // Credit the to user's account
+                BigDecimal creditto = touser.getAccountBalance().add(creditRequest.getAmount());
+                touser.setAccountBalance(creditto);
+
+                // Save changes to the database
+                userRepository.save(fromuser);
+                userRepository.save(touser);
+
+                return "The transaction was successful";
+            } else {
+                return "The balance from the account is not sufficient";
+            }
+        } else {
+            return "The passcode entered is wrong";
+        }
     }
 
 
