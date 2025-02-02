@@ -45,6 +45,8 @@ public class User {
 
     private String status;
 
+    private String passcode;
+
     @CreationTimestamp
     private String createdAt;
     @UpdateTimestamp
