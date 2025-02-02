@@ -1,14 +1,12 @@
 package com.ranjith_spring_projects.Bank.Application.Service;
 
-import com.ranjith_spring_projects.Bank.Application.Dto.AccountInfo;
-import com.ranjith_spring_projects.Bank.Application.Dto.BankResponse;
-import com.ranjith_spring_projects.Bank.Application.Dto.EmailDetails;
-import com.ranjith_spring_projects.Bank.Application.Dto.UserRequest;
+import com.ranjith_spring_projects.Bank.Application.Dto.*;
 import com.ranjith_spring_projects.Bank.Application.Entity.User;
 import com.ranjith_spring_projects.Bank.Application.Repository.UserRepository;
 import com.ranjith_spring_projects.Bank.Application.Utils.AccountNumber;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.ResponseStatus;
 
 import java.math.BigDecimal;
 
@@ -28,10 +26,10 @@ public class UserServiceImpl implements UserService{
         this.userRepository = userRepository;
     }
 
-    @Override
-    public BankResponse createAccount(UserRequest userRequest) {
-        return null;
-    }
+//    @Override
+//    public BankResponse createAccount(UserRequest userRequest) {
+//        return null;
+//    }
 
     @Override
     public BankResponse createAccount(UserRequest userRequest, String token) {
@@ -83,5 +81,27 @@ public class UserServiceImpl implements UserService{
                         .build())
                 .build();
     }
+
+    @Override
+    public BigDecimal balanceCheck(BalanceRequest balanceRequest, String token) {
+        // Authenticate using the JWT token
+        String username = jwtService.extractUserName(token);
+        if (username == null) {
+            throw new RuntimeException("User not authenticated.");
+        }
+
+        // Find user by account number
+        User user = userRepository.findByAccountNumber(balanceRequest.getAccountNumber())
+                .orElseThrow(() -> new RuntimeException("Invalid account number or passcode."));
+
+        // Validate passcode
+        if (!user.getPasscode().equals(balanceRequest.getPasscode())) {
+            throw new RuntimeException("Invalid account number or passcode.");
+        }
+
+        // Return the account balance
+        return user.getAccountBalance();
+    }
+
 
 }
