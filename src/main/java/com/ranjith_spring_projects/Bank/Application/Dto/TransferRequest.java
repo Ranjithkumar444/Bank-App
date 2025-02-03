@@ -5,14 +5,15 @@ import lombok.*;
 import java.math.BigDecimal;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
+@NoArgsConstructor
 @Builder
-@Setter
 @Getter
-public class CreditRequest {
+@Setter
+public class TransferRequest {
 
-    private String accountNumber;
+    private String fromAccountNumber;
+    private String toAccountNumber;
     private BigDecimal amount;
     private String passcode;
 }

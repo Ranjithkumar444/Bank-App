@@ -6,10 +6,8 @@ import com.ranjith_spring_projects.Bank.Application.Repository.UserRepository;
 import com.ranjith_spring_projects.Bank.Application.Utils.AccountNumber;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.ResponseStatus;
 
 import java.math.BigDecimal;
-import java.util.Optional;
 
 @Service
 public class UserServiceImpl implements UserService{
@@ -104,29 +102,30 @@ public class UserServiceImpl implements UserService{
         return user.getAccountBalance();
     }
 
+
     @Override
-    public String creditMoney(CreditRequest creditRequest, String token) {
+    public String TransferMoney(TransferRequest transferRequest, String token) {
         String username = jwtService.extractUserName(token);
         if (username == null) {
             throw new RuntimeException("User not authenticated.");
         }
 
         // Fetch users by account number
-        User fromuser = userRepository.findByAccountNumber(creditRequest.getFromAccountNumber())
+        User fromuser = userRepository.findByAccountNumber(transferRequest.getFromAccountNumber())
                 .orElseThrow(() -> new RuntimeException("Invalid Account from"));
 
-        User touser = userRepository.findByAccountNumber(creditRequest.getToAccountNumber())
+        User touser = userRepository.findByAccountNumber(transferRequest.getToAccountNumber())
                 .orElseThrow(() -> new RuntimeException("Invalid Account to"));
 
         // Validate passcode and check balance
-        if (fromuser.getPasscode().equals(creditRequest.getPasscode())) {
-            if (fromuser.getAccountBalance().compareTo(creditRequest.getAmount()) >= 0) {
+        if (fromuser.getPasscode().equals(transferRequest.getPasscode())) {
+            if (fromuser.getAccountBalance().compareTo(transferRequest.getAmount()) >= 0) {
                 // Debit the from user's account
-                BigDecimal debitfrom = fromuser.getAccountBalance().subtract(creditRequest.getAmount());
+                BigDecimal debitfrom = fromuser.getAccountBalance().subtract(transferRequest.getAmount());
                 fromuser.setAccountBalance(debitfrom);
 
                 // Credit the to user's account
-                BigDecimal creditto = touser.getAccountBalance().add(creditRequest.getAmount());
+                BigDecimal creditto = touser.getAccountBalance().add(transferRequest.getAmount());
                 touser.setAccountBalance(creditto);
 
                 // Save changes to the database
@@ -140,6 +139,42 @@ public class UserServiceImpl implements UserService{
         } else {
             return "The passcode entered is wrong";
         }
+    }
+
+    @Override
+    public String withDrayMoney(DebitRequest debitRequest, String token) {
+
+        User user = userRepository.findByAccountNumber(debitRequest.getAccountNumber()).
+                orElseThrow(() -> new RuntimeException("Invalid Account Number"));
+
+        if (!user.getPasscode().equals(debitRequest.getPasscode())) {
+            return "Invalid Passcode";
+        }
+
+        if(user == null){
+            return "User Account not Found";
+        }else if(user.getAccountBalance().compareTo(debitRequest.getAmount()) < 0){
+            return "Insufficient Balance";
+        }
+
+        user.setAccountBalance(user.getAccountBalance().subtract(debitRequest.getAmount()));
+        userRepository.save(user);
+
+        return String.format("The withdrawal of amount %.2f was successful from Account Number %s. Current balance: %.2f",
+                debitRequest.getAmount(), debitRequest.getAccountNumber(), user.getAccountBalance());
+    }
+
+    @Override
+    public String creditMoney(CreditRequest creditRequest, String token) {
+        User user = userRepository.findByAccountNumber(creditRequest.getAccountNumber()).
+                orElseThrow(() -> new RuntimeException("Invalid Account Number"));
+
+        user.setAccountBalance(user.getAccountBalance().add(creditRequest.getAmount()));
+        userRepository.save(user);
+
+        String temp = creditRequest.getAmount().toString();
+
+        return "The Amount  " + temp + "  is credited to your AccountNumber  " + creditRequest.getAccountNumber();
     }
 
 

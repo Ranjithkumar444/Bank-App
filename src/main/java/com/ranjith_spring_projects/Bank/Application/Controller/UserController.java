@@ -1,12 +1,8 @@
 package com.ranjith_spring_projects.Bank.Application.Controller;
 
-import com.ranjith_spring_projects.Bank.Application.Dto.BalanceRequest;
-import com.ranjith_spring_projects.Bank.Application.Dto.BankResponse;
-import com.ranjith_spring_projects.Bank.Application.Dto.CreditRequest;
-import com.ranjith_spring_projects.Bank.Application.Dto.UserRequest;
+import com.ranjith_spring_projects.Bank.Application.Dto.*;
 import com.ranjith_spring_projects.Bank.Application.Service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -32,8 +28,20 @@ public class UserController {
         return userService.balanceCheck(balanceRequest, token);
     }
 
+    @PostMapping("/transfer")
+    public String transferAmount(@RequestBody TransferRequest transferRequest, @RequestHeader("Authorization") String token){
+        token = token.substring(7);
+        return userService.TransferMoney(transferRequest,token);
+    }
+
+    @PostMapping("/withdraw")
+    public String withDrawAmount(@RequestBody DebitRequest debitRequest,@RequestHeader("Authorization") String token){
+        token = token.substring(7);
+        return userService.withDrayMoney(debitRequest,token);
+    }
+
     @PostMapping("/credit")
-    public String creditAmount(@RequestBody CreditRequest creditRequest,@RequestHeader("Authorization") String token){
+    public String creditMoney(@RequestBody CreditRequest creditRequest,@RequestHeader("Authorization") String token){
         token = token.substring(7);
         return userService.creditMoney(creditRequest,token);
     }
