@@ -1,13 +1,17 @@
 package com.ranjith_spring_projects.Bank.Application.Service;
 
 import com.ranjith_spring_projects.Bank.Application.Dto.*;
+import com.ranjith_spring_projects.Bank.Application.Entity.Transaction;
 import com.ranjith_spring_projects.Bank.Application.Entity.User;
+import com.ranjith_spring_projects.Bank.Application.Repository.TransactionRepository;
 import com.ranjith_spring_projects.Bank.Application.Repository.UserRepository;
 import com.ranjith_spring_projects.Bank.Application.Utils.AccountNumber;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class UserServiceImpl implements UserService{
@@ -20,6 +24,9 @@ public class UserServiceImpl implements UserService{
 
     @Autowired
     EmailService emailService;
+
+    @Autowired
+    TransactionRepository transactionRepository;
 
     public UserServiceImpl(UserRepository userRepository){
         this.userRepository = userRepository;
@@ -111,26 +118,30 @@ public class UserServiceImpl implements UserService{
         }
 
         // Fetch users by account number
-        User fromuser = userRepository.findByAccountNumber(transferRequest.getFromAccountNumber())
+        User fromUser = userRepository.findByAccountNumber(transferRequest.getFromAccountNumber())
                 .orElseThrow(() -> new RuntimeException("Invalid Account from"));
 
-        User touser = userRepository.findByAccountNumber(transferRequest.getToAccountNumber())
+        User toUser = userRepository.findByAccountNumber(transferRequest.getToAccountNumber())
                 .orElseThrow(() -> new RuntimeException("Invalid Account to"));
 
         // Validate passcode and check balance
-        if (fromuser.getPasscode().equals(transferRequest.getPasscode())) {
-            if (fromuser.getAccountBalance().compareTo(transferRequest.getAmount()) >= 0) {
+        if (fromUser.getPasscode().equals(transferRequest.getPasscode())) {
+            if (fromUser.getAccountBalance().compareTo(transferRequest.getAmount()) >= 0) {
                 // Debit the from user's account
-                BigDecimal debitfrom = fromuser.getAccountBalance().subtract(transferRequest.getAmount());
-                fromuser.setAccountBalance(debitfrom);
+                BigDecimal debitFrom = fromUser.getAccountBalance().subtract(transferRequest.getAmount());
+                fromUser.setAccountBalance(debitFrom);
 
                 // Credit the to user's account
-                BigDecimal creditto = touser.getAccountBalance().add(transferRequest.getAmount());
-                touser.setAccountBalance(creditto);
+                BigDecimal creditTo = toUser.getAccountBalance().add(transferRequest.getAmount());
+                toUser.setAccountBalance(creditTo);
 
                 // Save changes to the database
-                userRepository.save(fromuser);
-                userRepository.save(touser);
+                userRepository.save(fromUser);
+                userRepository.save(toUser);
+
+                // Create and save transaction records
+                createTransaction(fromUser, transferRequest.getFromAccountNumber(), transferRequest.getAmount().negate(), "TRANSFER", "SUCCESS", "Transfer to " + transferRequest.getToAccountNumber());
+                createTransaction(toUser, transferRequest.getToAccountNumber(), transferRequest.getAmount(), "TRANSFER", "SUCCESS", "Transfer from " + transferRequest.getFromAccountNumber());
 
                 return "The transaction was successful";
             } else {
@@ -142,23 +153,24 @@ public class UserServiceImpl implements UserService{
     }
 
     @Override
-    public String withDrayMoney(DebitRequest debitRequest, String token) {
-
-        User user = userRepository.findByAccountNumber(debitRequest.getAccountNumber()).
-                orElseThrow(() -> new RuntimeException("Invalid Account Number"));
+    public String withDrawMoney(DebitRequest debitRequest, String token) {
+        User user = userRepository.findByAccountNumber(debitRequest.getAccountNumber())
+                .orElseThrow(() -> new RuntimeException("Invalid Account Number"));
 
         if (!user.getPasscode().equals(debitRequest.getPasscode())) {
             return "Invalid Passcode";
         }
 
-        if(user == null){
-            return "User Account not Found";
-        }else if(user.getAccountBalance().compareTo(debitRequest.getAmount()) < 0){
+        if (user.getAccountBalance().compareTo(debitRequest.getAmount()) < 0) {
             return "Insufficient Balance";
         }
 
+        // Debit the user's account
         user.setAccountBalance(user.getAccountBalance().subtract(debitRequest.getAmount()));
         userRepository.save(user);
+
+        // Create and save transaction record
+        createTransaction(user, debitRequest.getAccountNumber(), debitRequest.getAmount().negate(), "WITHDRAWAL", "SUCCESS", "Withdrawal from account");
 
         return String.format("The withdrawal of amount %.2f was successful from Account Number %s. Current balance: %.2f",
                 debitRequest.getAmount(), debitRequest.getAccountNumber(), user.getAccountBalance());
@@ -166,16 +178,56 @@ public class UserServiceImpl implements UserService{
 
     @Override
     public String creditMoney(CreditRequest creditRequest, String token) {
-        User user = userRepository.findByAccountNumber(creditRequest.getAccountNumber()).
-                orElseThrow(() -> new RuntimeException("Invalid Account Number"));
+        User user = userRepository.findByAccountNumber(creditRequest.getAccountNumber())
+                .orElseThrow(() -> new RuntimeException("Invalid Account Number"));
 
+        // Credit the user's account
         user.setAccountBalance(user.getAccountBalance().add(creditRequest.getAmount()));
         userRepository.save(user);
 
-        String temp = creditRequest.getAmount().toString();
+        // Create and save transaction record
+        createTransaction(user, creditRequest.getAccountNumber(), creditRequest.getAmount(), "DEPOSIT", "SUCCESS", "Deposit to account");
 
-        return "The Amount  " + temp + "  is credited to your AccountNumber  " + creditRequest.getAccountNumber();
+        return "The Amount " + creditRequest.getAmount() + " is credited to your AccountNumber " + creditRequest.getAccountNumber();
     }
 
+
+    private void createTransaction(User user, String accountNumber, BigDecimal amount, String transactionType, String transactionStatus, String description) {
+        Transaction transaction = Transaction.builder()
+                .accountNumber(accountNumber)
+                .amount(amount)
+                .transactionType(transactionType)
+                .transactionStatus(transactionStatus)
+                .transactionDate(LocalDateTime.now())
+                .description(description)
+                .user(user)
+                .build();
+
+        transactionRepository.save(transaction);
+    }
+
+    @Override
+    public List<Transaction> getTransactionHistory(TransactionHistory transactionHistory, String token) {
+        String username = jwtService.extractUserName(token);
+
+        if (username == null) {
+            throw new RuntimeException("User not authenticated.");
+        }
+
+        // Extract account details from the DTO
+        String accountNumber = transactionHistory.getAccountNumber();
+        String passcode = transactionHistory.getPasscode();
+
+        // Verify account and passcode
+        User user = userRepository.findByAccountNumber(accountNumber)
+                .orElseThrow(() -> new RuntimeException("Invalid account number."));
+
+        if (!user.getPasscode().equals(passcode)) {
+            throw new RuntimeException("Invalid passcode.");
+        }
+
+        // Fetch transaction history for the given account number
+        return transactionRepository.findByAccountNumber(accountNumber);
+    }
 
 }
