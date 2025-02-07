@@ -37,7 +37,7 @@ public class UserController {
     @PostMapping("/withdraw")
     public String withDrawAmount(@RequestBody DebitRequest debitRequest,@RequestHeader("Authorization") String token){
         token = token.substring(7);
-        return userService.withDrayMoney(debitRequest,token);
+        return userService.withDrawMoney(debitRequest,token);
     }
 
     @PostMapping("/credit")
