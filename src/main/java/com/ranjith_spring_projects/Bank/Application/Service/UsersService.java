@@ -1,5 +1,6 @@
 package com.ranjith_spring_projects.Bank.Application.Service;
 
+import com.ranjith_spring_projects.Bank.Application.Dto.EmailDetails;
 import com.ranjith_spring_projects.Bank.Application.Entity.Users;
 import com.ranjith_spring_projects.Bank.Application.Repository.UsersRepo;
 
@@ -10,6 +11,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+
 @Service
 public class UsersService {
 
@@ -18,6 +22,15 @@ public class UsersService {
 
     @Autowired
     private JWTService jwtService;
+
+    @Autowired
+    private EmailService emailService;
+
+    @Autowired
+    private OTPService otpService;
+
+    @Autowired
+    UsersRepo usersRepo;
 
     @Autowired
     AuthenticationManager authManager;
@@ -46,7 +59,40 @@ public class UsersService {
         if (authentication.isAuthenticated()) {
             return jwtService.generateToken(user.getUsername());
         } else {
-            return "fail";
+            throw new RuntimeException("Authentication failed");
+        }
+    }
+
+    public String generateOtp(String username) {
+        Users user = usersRepo.findByUsername(username);
+        if (user == null) {
+            throw new RuntimeException("User not found for the given username.");
+        }
+
+        String otp = otpService.generateOTP(username);
+
+        // Optionally store the OTP in memory/database with expiry logic if needed.
+
+        // Send email notification with the generated OTP
+        EmailDetails emailDetails = EmailDetails.builder()
+                .recipient(user.getEmail())
+                .subject("Your OTP Code")
+                .messageBody("Your OTP is: " + otp + ". It will expire in 5 minutes.")
+                .build();
+        emailService.sendEmailAlert(emailDetails);
+
+        return otp;
+    }
+
+    private final SecureRandom random = new SecureRandom();
+
+    public String verifyOtp(String username, String otp) {
+        // Validate the OTP
+        if (otpService.validateOTP(username, otp)) {
+            // Generate token after successful OTP verification
+            return jwtService.generateToken(username);
+        } else {
+            throw new RuntimeException("Invalid or expired OTP.");
         }
     }
 }
