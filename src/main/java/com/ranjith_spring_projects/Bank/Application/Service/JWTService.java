@@ -29,7 +29,7 @@ public class JWTService {
 
     private String createToken(Map<String, Object> claims, String subject) {
         Date now = new Date(System.currentTimeMillis());
-        Date expiration = new Date(now.getTime() + 1000 * 60 * 60 * 10); // 10 hours expiration time
+        Date expiration = new Date(now.getTime() + 1000 * 60 * 60 * 24); // 24 hours expiration time
 
         return Jwts.builder()
                 .setClaims(claims)

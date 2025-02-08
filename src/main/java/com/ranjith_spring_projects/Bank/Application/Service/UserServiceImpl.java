@@ -3,8 +3,10 @@ package com.ranjith_spring_projects.Bank.Application.Service;
 import com.ranjith_spring_projects.Bank.Application.Dto.*;
 import com.ranjith_spring_projects.Bank.Application.Entity.Transaction;
 import com.ranjith_spring_projects.Bank.Application.Entity.User;
+import com.ranjith_spring_projects.Bank.Application.Entity.Users;
 import com.ranjith_spring_projects.Bank.Application.Repository.TransactionRepository;
 import com.ranjith_spring_projects.Bank.Application.Repository.UserRepository;
+import com.ranjith_spring_projects.Bank.Application.Repository.UsersRepo;
 import com.ranjith_spring_projects.Bank.Application.Utils.AccountNumber;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,6 +28,9 @@ public class UserServiceImpl implements UserService{
     EmailService emailService;
 
     @Autowired
+    UsersRepo usersRepo;
+
+    @Autowired
     TransactionRepository transactionRepository;
 
     public UserServiceImpl(UserRepository userRepository){
@@ -39,20 +44,25 @@ public class UserServiceImpl implements UserService{
 
     @Override
     public BankResponse createAccount(UserRequest userRequest, String token) {
-        // First, ensure the user is authenticated via JWT
-        if (jwtService.extractUserName(token) == null) {
+        // Extract the username from JWT token
+        String username = jwtService.extractUserName(token);
+        if (username == null) {
             throw new RuntimeException("User not authenticated.");
         }
 
-        if(userRepository.existsByEmail(userRequest.getEmail())){
-            BankResponse response = BankResponse.builder()
+        // Fetch user information from `Users` table based on username
+        Users registeredUser = usersRepo.findByUsername(username);
+
+        // Validate whether the bank account already exists for this user
+        if (userRepository.existsByEmail(registeredUser.getEmail())) {
+            return BankResponse.builder()
                     .responseCode(AccountNumber.ACCOUNT_CODE)
-                    .responseMessage(AccountNumber.ACCOUNT_MESSAGE)
+                    .responseMessage("Account already exists for this user.")
                     .accountInfo(null)
                     .build();
         }
 
-        // Proceed with account creation if user is authenticated
+        // Proceed with account creation if validation passes
         User user = User.builder()
                 .firstName(userRequest.getFirstName())
                 .lastName(userRequest.getLastName())
@@ -62,31 +72,38 @@ public class UserServiceImpl implements UserService{
                 .stateOfOrigin(userRequest.getStateOfOrigin())
                 .accountNumber(AccountNumber.createAccountNumber())
                 .accountBalance(BigDecimal.ZERO)
-                .email(userRequest.getEmail())
-                .phoneNumber(userRequest.getPhoneNumber())
+                .email(registeredUser.getEmail()) // Set email from Users table
+                .phoneNumber(registeredUser.getPhoneNumber()) // Set phone from Users table
                 .alternativePhoneNumber(userRequest.getAlternativePhoneNumber())
                 .status("ACTIVE")
                 .passcode(userRequest.getPasscode())
                 .build();
 
-        User saveduser = userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        // Send account creation email
         EmailDetails emailDetails = EmailDetails.builder()
-                .recipient(saveduser.getEmail())
-                .subject("Account creation")
-                .messageBody("congratulations ! your account has been created successfully.\nYour Account Details: \n" +
-                        "Account Name : " + saveduser.getFirstName() + " " + saveduser.getLastName() + "\n Account number : " + saveduser.getAccountNumber() + "\n Passcode : " + saveduser.getPasscode())
+                .recipient(savedUser.getEmail())
+                .subject("Account Creation")
+                .messageBody("Congratulations! Your account has been created successfully.\n" +
+                        "Account Details:\n" +
+                        "Account Name: " + savedUser.getFirstName() + " " + savedUser.getLastName() + "\n" +
+                        "Account Number: " + savedUser.getAccountNumber() + "\n" +
+                        "Passcode: " + savedUser.getPasscode())
                 .build();
         emailService.sendEmailAlert(emailDetails);
+
         return BankResponse.builder()
                 .responseCode(AccountNumber.ACCOUNT_CODE_CREATION)
                 .responseMessage(AccountNumber.ACCOUNT_MESSAGE_SUCCESS)
                 .accountInfo(AccountInfo.builder()
-                        .accountNumber(saveduser.getAccountNumber())
-                        .accountBalance(saveduser.getAccountBalance())
-                        .accountName(saveduser.getFirstName() + " " + saveduser.getLastName() + " " + saveduser.getOtherName())
+                        .accountNumber(savedUser.getAccountNumber())
+                        .accountBalance(savedUser.getAccountBalance())
+                        .accountName(savedUser.getFirstName() + " " + savedUser.getLastName() + " " + savedUser.getOtherName())
                         .build())
                 .build();
     }
+
 
     @Override
     public BigDecimal balanceCheck(BalanceRequest balanceRequest, String token) {
