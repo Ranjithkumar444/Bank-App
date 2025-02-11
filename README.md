@@ -1,6 +1,6 @@
 # Bank-App
 
-Bank Application (Spring Boot + Spring Security + JWT + MySQL)
+Bank Application (Spring Boot + Spring Security + JWT + MySQL + Hibernate)
 
 Project Overview
 
