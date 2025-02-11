@@ -11,9 +11,7 @@ import java.math.BigDecimal;
 @Getter
 @Setter
 public class TransferRequest {
-
-    private String fromAccountNumber;
-    private String toAccountNumber;
+    private String toAccountNumber; // Only recipient's account number is required
     private BigDecimal amount;
     private String passcode;
 }

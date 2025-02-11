@@ -12,7 +12,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/bank")
 public class TransactionController {
-
     @Autowired
     private UserService userService;
 
@@ -20,8 +19,7 @@ public class TransactionController {
     public List<Transaction> getTransactionHistory(
             @RequestBody TransactionHistory transactionHistory,
             @RequestHeader("Authorization") String token) {
-
-        token = token.substring(7); // Removing "Bearer " prefix if present
+        token = token.substring(7);
         return userService.getTransactionHistory(transactionHistory, token);
     }
 
@@ -33,9 +31,10 @@ public class TransactionController {
     }
 
     @PostMapping("/transfer")
-    public String transferAmount(@RequestBody TransferRequest transferRequest, @RequestHeader("Authorization") String token){
-        token = token.substring(7);
-        return userService.TransferMoney(transferRequest,token);
+    public String transferAmount(@RequestBody TransferRequest transferRequest,
+                                 @RequestHeader("Authorization") String token) {
+        token = token.substring(7); // Remove "Bearer " prefix
+        return userService.TransferMoney(transferRequest, token);
     }
 
     @PostMapping("/withdraw")

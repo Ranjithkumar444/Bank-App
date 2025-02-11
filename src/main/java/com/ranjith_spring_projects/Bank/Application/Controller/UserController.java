@@ -14,15 +14,13 @@ import java.math.BigDecimal;
 @RestController
 @RequestMapping("/api/user")
 public class UserController {
-
     @Autowired
     private UserService userService;
 
     @PostMapping("/create-user")
     public BankResponse createAccount(@RequestBody UserRequest userRequest,
                                       @RequestHeader("Authorization") String token) {
-        token = token.substring(7); // Remove "Bearer " prefix
-        return userService.createAccount(userRequest, token); // Pass token to the service
+        token = token.substring(7);
+        return userService.createAccount(userRequest, token);
     }
-
 }

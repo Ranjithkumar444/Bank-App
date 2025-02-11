@@ -15,12 +15,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/auth")
 public class UsersController {
-
     @Autowired
     private UsersService usersService;
-
     @Autowired
-    JWTService jwtService;
+    private JWTService jwtService;
 
     @PostMapping("/register")
     public ResponseEntity<String> registerUser(@RequestBody Users user) {
@@ -40,26 +38,21 @@ public class UsersController {
     @PostMapping("/verify-otp")
     public ResponseEntity<String> verifyOtp(@RequestBody OtpRequest otpRequest) {
         try {
-            usersService.verifyOtp(otpRequest.getUsername(), otpRequest.getOtp());
-            String token = jwtService.generateToken(otpRequest.getUsername());
+            String token = usersService.verifyOtp(otpRequest.getEmail(), otpRequest.getOtp());
             return ResponseEntity.ok("OTP Verified. Token: " + token);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 
-
-
     @PostMapping("/generate-otp")
     public ResponseEntity<String> generateOtp(@RequestBody OtpRequest otpRequest) {
         try {
-            String username = otpRequest.getUsername();
-            String otp = usersService.generateOtp(username);
+            String email = otpRequest.getEmail();
+            String otp = usersService.generateOtp(email);
             return ResponseEntity.ok("OTP sent to the user successfully.");
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 }
-
-
