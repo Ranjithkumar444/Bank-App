@@ -16,44 +16,34 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
-public class UserServiceImpl implements UserService{
-
+public class UserServiceImpl implements UserService {
     @Autowired
     UserRepository userRepository;
-
     @Autowired
     JWTService jwtService;
-
     @Autowired
     EmailService emailService;
-
     @Autowired
     UsersRepo usersRepo;
-
     @Autowired
     TransactionRepository transactionRepository;
 
-    public UserServiceImpl(UserRepository userRepository){
-        this.userRepository = userRepository;
-    }
-
-//    @Override
-//    public BankResponse createAccount(UserRequest userRequest) {
-//        return null;
-//    }
-
     @Override
     public BankResponse createAccount(UserRequest userRequest, String token) {
-        // Extract the username from JWT token
-        String username = jwtService.extractUserName(token);
-        if (username == null) {
+        // Extract email from the token (if needed for additional validation)
+        String emailFromToken = jwtService.extractEmail(token);
+        if (emailFromToken == null) {
             throw new RuntimeException("User not authenticated.");
         }
 
-        // Fetch user information from `Users` table based on username
-        Users registeredUser = usersRepo.findByUsername(username);
+        // Fetch the Users entity from the database using the email from the request
+        String emailFromRequest = userRequest.getEmail();
+        Users registeredUser = usersRepo.findByEmail(emailFromRequest);
+        if (registeredUser == null) {
+            throw new RuntimeException("User with the provided email does not exist in the Users table.");
+        }
 
-        // Validate whether the bank account already exists for this user
+        // Check if a bank account already exists for this user
         if (userRepository.existsByEmail(registeredUser.getEmail())) {
             return BankResponse.builder()
                     .responseCode(AccountNumber.ACCOUNT_CODE)
@@ -62,7 +52,7 @@ public class UserServiceImpl implements UserService{
                     .build();
         }
 
-        // Proceed with account creation if validation passes
+        // Create the User entity and link it to the fetched Users entity
         User user = User.builder()
                 .firstName(userRequest.getFirstName())
                 .lastName(userRequest.getLastName())
@@ -72,16 +62,18 @@ public class UserServiceImpl implements UserService{
                 .stateOfOrigin(userRequest.getStateOfOrigin())
                 .accountNumber(AccountNumber.createAccountNumber())
                 .accountBalance(BigDecimal.ZERO)
-                .email(registeredUser.getEmail()) // Set email from Users table
-                .phoneNumber(registeredUser.getPhoneNumber()) // Set phone from Users table
+                .email(registeredUser.getEmail())
+                .phoneNumber(registeredUser.getPhoneNumber())
                 .alternativePhoneNumber(userRequest.getAlternativePhoneNumber())
                 .status("ACTIVE")
                 .passcode(userRequest.getPasscode())
+                .users(registeredUser) // Link the fetched Users entity
                 .build();
 
+        // Save the User entity
         User savedUser = userRepository.save(user);
 
-        // Send account creation email
+        // Send an email notification
         EmailDetails emailDetails = EmailDetails.builder()
                 .recipient(savedUser.getEmail())
                 .subject("Account Creation")
@@ -93,6 +85,7 @@ public class UserServiceImpl implements UserService{
                 .build();
         emailService.sendEmailAlert(emailDetails);
 
+        // Return the response
         return BankResponse.builder()
                 .responseCode(AccountNumber.ACCOUNT_CODE_CREATION)
                 .responseMessage(AccountNumber.ACCOUNT_MESSAGE_SUCCESS)
@@ -104,110 +97,109 @@ public class UserServiceImpl implements UserService{
                 .build();
     }
 
-
     @Override
     public BigDecimal balanceCheck(BalanceRequest balanceRequest, String token) {
-        // Authenticate using the JWT token
-        String username = jwtService.extractUserName(token);
-        if (username == null) {
+        // Extract email from the token
+        String email = jwtService.extractEmail(token);
+        if (email == null) {
             throw new RuntimeException("User not authenticated.");
         }
 
-        // Find user by account number
-        User user = userRepository.findByAccountNumber(balanceRequest.getAccountNumber())
-                .orElseThrow(() -> new RuntimeException("Invalid account number or passcode."));
+        // Fetch the user (bank account) by email
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found."));
 
         // Validate passcode
         if (!user.getPasscode().equals(balanceRequest.getPasscode())) {
-            throw new RuntimeException("Invalid account number or passcode.");
+            throw new RuntimeException("Invalid passcode.");
         }
 
         // Return the account balance
         return user.getAccountBalance();
     }
 
-
     @Override
     public String TransferMoney(TransferRequest transferRequest, String token) {
-        String username = jwtService.extractUserName(token);
-        if (username == null) {
+        String email = jwtService.extractEmail(token);
+        if (email == null) {
             throw new RuntimeException("User not authenticated.");
         }
 
-        // Fetch users by account number
-        User fromUser = userRepository.findByAccountNumber(transferRequest.getFromAccountNumber())
-                .orElseThrow(() -> new RuntimeException("Invalid Account from"));
+        // Fetch the user (bank account) by email
+        User fromUser = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found."));
 
+        // Fetch the recipient user by account number
         User toUser = userRepository.findByAccountNumber(transferRequest.getToAccountNumber())
-                .orElseThrow(() -> new RuntimeException("Invalid Account to"));
+                .orElseThrow(() -> new RuntimeException("Invalid recipient account number."));
 
         // Validate passcode and check balance
         if (fromUser.getPasscode().equals(transferRequest.getPasscode())) {
             if (fromUser.getAccountBalance().compareTo(transferRequest.getAmount()) >= 0) {
-                // Debit the from user's account
+                // Perform the transfer
                 BigDecimal debitFrom = fromUser.getAccountBalance().subtract(transferRequest.getAmount());
                 fromUser.setAccountBalance(debitFrom);
 
-                // Credit the to user's account
                 BigDecimal creditTo = toUser.getAccountBalance().add(transferRequest.getAmount());
                 toUser.setAccountBalance(creditTo);
 
-                // Save changes to the database
                 userRepository.save(fromUser);
                 userRepository.save(toUser);
 
-                // Create and save transaction records
-                createTransaction(fromUser, transferRequest.getFromAccountNumber(), transferRequest.getAmount().negate(), "TRANSFER", "SUCCESS", "Transfer to " + transferRequest.getToAccountNumber());
-                createTransaction(toUser, transferRequest.getToAccountNumber(), transferRequest.getAmount(), "TRANSFER", "SUCCESS", "Transfer from " + transferRequest.getFromAccountNumber());
+                // Create transaction records
+                createTransaction(fromUser, fromUser.getAccountNumber(), transferRequest.getAmount().negate(), "TRANSFER", "SUCCESS", "Transfer to " + transferRequest.getToAccountNumber());
+                createTransaction(toUser, transferRequest.getToAccountNumber(), transferRequest.getAmount(), "TRANSFER", "SUCCESS", "Transfer from " + fromUser.getAccountNumber());
 
-                return "The transaction was successful";
+                return "The transaction was successful.";
             } else {
-                return "The balance from the account is not sufficient";
+                return "Insufficient balance.";
             }
         } else {
-            return "The passcode entered is wrong";
+            return "Invalid passcode.";
         }
     }
 
     @Override
     public String withDrawMoney(DebitRequest debitRequest, String token) {
-        User user = userRepository.findByAccountNumber(debitRequest.getAccountNumber())
-                .orElseThrow(() -> new RuntimeException("Invalid Account Number"));
+        String email = jwtService.extractEmail(token);
 
-        if (!user.getPasscode().equals(debitRequest.getPasscode())) {
+        if(email == null){
+            throw new RuntimeException("User is not Authenticated");
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found."));
+
+        if(!user.getPasscode().equals(debitRequest.getPasscode())){
             return "Invalid Passcode";
         }
-
-        if (user.getAccountBalance().compareTo(debitRequest.getAmount()) < 0) {
+        if(user.getAccountBalance().compareTo(debitRequest.getAmount()) < 0){
             return "Insufficient Balance";
         }
-
-        // Debit the user's account
         user.setAccountBalance(user.getAccountBalance().subtract(debitRequest.getAmount()));
         userRepository.save(user);
 
-        // Create and save transaction record
-        createTransaction(user, debitRequest.getAccountNumber(), debitRequest.getAmount().negate(), "WITHDRAWAL", "SUCCESS", "Withdrawal from account");
-
+        createTransaction(user, user.getAccountNumber(), debitRequest.getAmount().negate(), "WITHDRAWAL", "SUCCESS", "Withdrawal from account");
         return String.format("The withdrawal of amount %.2f was successful from Account Number %s. Current balance: %.2f",
-                debitRequest.getAmount(), debitRequest.getAccountNumber(), user.getAccountBalance());
+                debitRequest.getAmount(), user.getAccountNumber(), user.getAccountBalance());
     }
 
     @Override
     public String creditMoney(CreditRequest creditRequest, String token) {
-        User user = userRepository.findByAccountNumber(creditRequest.getAccountNumber())
-                .orElseThrow(() -> new RuntimeException("Invalid Account Number"));
 
-        // Credit the user's account
+        String email = jwtService.extractEmail(token);
+        if (email == null) {
+            throw new RuntimeException("User not authenticated.");
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found."));
         user.setAccountBalance(user.getAccountBalance().add(creditRequest.getAmount()));
         userRepository.save(user);
+        createTransaction(user,user.getAccountNumber(),creditRequest.getAmount(),"DEPOSIT","SUCCESS","Deposit to account");
 
-        // Create and save transaction record
-        createTransaction(user, creditRequest.getAccountNumber(), creditRequest.getAmount(), "DEPOSIT", "SUCCESS", "Deposit to account");
-
-        return "The Amount " + creditRequest.getAmount() + " is credited to your AccountNumber " + creditRequest.getAccountNumber();
+        return "The Amount " + creditRequest.getAmount() + " is credited to your AccountNumber ";
     }
-
 
     private void createTransaction(User user, String accountNumber, BigDecimal amount, String transactionType, String transactionStatus, String description) {
         Transaction transaction = Transaction.builder()
@@ -219,32 +211,23 @@ public class UserServiceImpl implements UserService{
                 .description(description)
                 .user(user)
                 .build();
-
         transactionRepository.save(transaction);
     }
 
     @Override
     public List<Transaction> getTransactionHistory(TransactionHistory transactionHistory, String token) {
-        String username = jwtService.extractUserName(token);
-
-        if (username == null) {
+        String email = jwtService.extractEmail(token);
+        if (email == null) {
             throw new RuntimeException("User not authenticated.");
         }
 
-        // Extract account details from the DTO
         String accountNumber = transactionHistory.getAccountNumber();
         String passcode = transactionHistory.getPasscode();
-
-        // Verify account and passcode
         User user = userRepository.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new RuntimeException("Invalid account number."));
-
         if (!user.getPasscode().equals(passcode)) {
             throw new RuntimeException("Invalid passcode.");
         }
-
-        // Fetch transaction history for the given account number
         return transactionRepository.findByAccountNumber(accountNumber);
     }
-
 }

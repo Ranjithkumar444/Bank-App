@@ -12,8 +12,6 @@ import java.math.BigDecimal;
 @Getter
 @Setter
 public class DebitRequest {
-
-    private String accountNumber;
     private String passcode;
     private BigDecimal amount;
 }

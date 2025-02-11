@@ -18,19 +18,17 @@ import java.util.function.Function;
 
 @Service
 public class JWTService {
-
     // Secret key (ensure it is kept confidential)
     private static final String SECRET_KEY = "kJ9VbD8rA56yLqR7tPfXqkD3JnVsFwR23Ht7MzLsNpQ=";
 
-    public String generateToken(String username) {
+    public String generateToken(String email) {
         Map<String, Object> claims = new HashMap<>();
-        return createToken(claims, username);
+        return createToken(claims, email);
     }
 
     private String createToken(Map<String, Object> claims, String subject) {
         Date now = new Date(System.currentTimeMillis());
         Date expiration = new Date(now.getTime() + 1000 * 60 * 60 * 24); // 24 hours expiration time
-
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(subject)
@@ -40,7 +38,7 @@ public class JWTService {
                 .compact();
     }
 
-    public String extractUserName(String token) {
+    public String extractEmail(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
@@ -58,8 +56,8 @@ public class JWTService {
     }
 
     public boolean validateToken(String token, UserDetails userDetails) {
-        final String userName = extractUserName(token);
-        return (userName.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        final String email = extractEmail(token);
+        return (email.equals(userDetails.getUsername()) && !isTokenExpired(token));
     }
 
     private boolean isTokenExpired(String token) {

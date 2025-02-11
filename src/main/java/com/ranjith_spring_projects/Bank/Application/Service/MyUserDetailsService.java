@@ -11,13 +11,12 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class MyUserDetailsService implements UserDetailsService {
-
     @Autowired
     private UsersRepo userRepo;
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        Users user = userRepo.findByUsername(username);
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        Users user = userRepo.findByEmail(email); // Assuming you have a method to find by email
         if (user == null) {
             System.out.println("User Not Found");
             throw new UsernameNotFoundException("user not found");

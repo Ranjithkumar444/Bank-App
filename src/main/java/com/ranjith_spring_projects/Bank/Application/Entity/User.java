@@ -18,43 +18,39 @@ import java.util.List;
 @Entity
 @Table(name = "user")
 public class User {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String firstName;
-
     private String lastName;
-
     private String otherName;
-
     private String gender;
-
     private String address;
-
     private String stateOfOrigin;
-
     private String accountNumber;
-
     private BigDecimal accountBalance;
 
+    @Column(nullable = false, unique = true)
     private String email;
 
     private String phoneNumber;
-
     private String alternativePhoneNumber;
-
     private String status;
-
     private String passcode;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
     private List<Transaction> transactions;
 
+    // One-to-One relationship with the Users table
+    @OneToOne
+    @JoinColumn(name = "users_id", nullable = false)
+    private Users users;
+
     @CreationTimestamp
     private String createdAt;
+
     @UpdateTimestamp
     private String modifiedAt;
 }

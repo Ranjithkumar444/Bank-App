@@ -12,7 +12,6 @@ import java.math.BigDecimal;
 @Getter
 public class CreditRequest {
 
-    private String accountNumber;
     private BigDecimal amount;
     private String passcode;
 }

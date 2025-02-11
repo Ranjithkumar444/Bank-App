@@ -16,84 +16,60 @@ import java.time.LocalDateTime;
 
 @Service
 public class UsersService {
-
     @Autowired
     private UsersRepo repo;
-
     @Autowired
     private JWTService jwtService;
-
     @Autowired
     private EmailService emailService;
-
     @Autowired
     private OTPService otpService;
-
     @Autowired
-    UsersRepo usersRepo;
-
-    @Autowired
-    AuthenticationManager authManager;
+    private AuthenticationManager authManager;
 
     private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
 
     public Users register(Users user) {
-        // Check if the username already exists
-        if (repo.findByUsername(user.getUsername()) != null) {
-            throw new RuntimeException("The username is already taken. Try another username.");
-        }
-
-        // Check if the email already exists
         if (repo.existsByEmail(user.getEmail())) {
             throw new RuntimeException("The user email is already taken.");
         }
-
         user.setPassword(encoder.encode(user.getPassword()));
         return repo.save(user);
     }
 
     public String verify(Users user) {
         Authentication authentication = authManager.authenticate(
-                new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword())
+                new UsernamePasswordAuthenticationToken(user.getEmail(), user.getPassword())
         );
         if (authentication.isAuthenticated()) {
-            return jwtService.generateToken(user.getUsername());
+            Users authenticatedUser = repo.findByEmail(user.getEmail());
+            return jwtService.generateToken(authenticatedUser.getEmail());
         } else {
             throw new RuntimeException("Authentication failed");
         }
     }
 
-    public String generateOtp(String username) {
-        Users user = usersRepo.findByUsername(username);
+    public String generateOtp(String email) {
+        Users user = repo.findByEmail(email);
         if (user == null) {
-            throw new RuntimeException("User not found for the given username.");
+            throw new RuntimeException("User not found for the given email.");
         }
-
-        String otp = otpService.generateOTP(username);
-
-        // Optionally store the OTP in memory/database with expiry logic if needed.
-
-        // Send email notification with the generated OTP
+        String otp = otpService.generateOTP(email);
         EmailDetails emailDetails = EmailDetails.builder()
                 .recipient(user.getEmail())
                 .subject("Your OTP Code")
                 .messageBody("Your OTP is: " + otp + ". It will expire in 5 minutes.")
                 .build();
         emailService.sendEmailAlert(emailDetails);
-
         return otp;
     }
 
-    private final SecureRandom random = new SecureRandom();
-
-    public String verifyOtp(String username, String otp) {
-        // Validate the OTP
-        if (otpService.validateOTP(username, otp)) {
-            // Generate token after successful OTP verification
-            return jwtService.generateToken(username);
+    public String verifyOtp(String email, String otp) {
+        if (otpService.validateOTP(email, otp)) {
+            Users user = repo.findByEmail(email);
+            return jwtService.generateToken(user.getEmail());
         } else {
             throw new RuntimeException("Invalid or expired OTP.");
         }
     }
 }
-
