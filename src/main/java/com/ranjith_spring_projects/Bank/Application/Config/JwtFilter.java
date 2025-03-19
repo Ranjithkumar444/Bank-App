@@ -26,19 +26,29 @@ public class JwtFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        System.out.println("JWT Filter - Request URI: " + request.getRequestURI()); // Debugging
+
         String authHeader = request.getHeader("Authorization");
         String token = null;
         String email = null;
+
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);
             email = jwtService.extractEmail(token);
+            System.out.println("JWT Filter - Extracted Email: " + email);
         }
+
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = context.getBean(MyUserDetailsService.class).loadUserByUsername(email);
+            System.out.println("JWT Filter - User Found: " + userDetails.getUsername());
+
             if (jwtService.validateToken(token, userDetails)) {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+                System.out.println("JWT Filter - Authentication Successful");
+            } else {
+                System.out.println("JWT Filter - Token Validation Failed");
             }
         }
         filterChain.doFilter(request, response);
