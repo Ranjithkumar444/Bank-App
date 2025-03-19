@@ -8,7 +8,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
@@ -27,27 +29,31 @@ public class UsersService {
     @Autowired
     private AuthenticationManager authManager;
 
-    private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+
+    public UsersService(PasswordEncoder passwordEncoder) {
+        this.passwordEncoder = passwordEncoder;
+    }
 
     public Users register(Users user) {
         if (repo.existsByEmail(user.getEmail())) {
             throw new RuntimeException("The user email is already taken.");
         }
-        user.setPassword(encoder.encode(user.getPassword()));
+        user.setPassword(passwordEncoder.encode(user.getPassword()));  // Use the correct encoder
         return repo.save(user);
     }
+
 
     public String verify(Users user) {
         Authentication authentication = authManager.authenticate(
                 new UsernamePasswordAuthenticationToken(user.getEmail(), user.getPassword())
         );
-        if (authentication.isAuthenticated()) {
-            Users authenticatedUser = repo.findByEmail(user.getEmail());
-            return jwtService.generateToken(authenticatedUser.getEmail());
-        } else {
-            throw new RuntimeException("Authentication failed");
-        }
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        return user.getEmail();
     }
+
 
     public String generateOtp(String email) {
         Users user = repo.findByEmail(email);

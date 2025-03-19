@@ -1,5 +1,6 @@
 package com.ranjith_spring_projects.Bank.Application.Entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -41,5 +42,6 @@ public class Users {
 
     // One-to-One relationship with the User (bank account) table
     @OneToOne(mappedBy = "users", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonBackReference
     private User user;
 }

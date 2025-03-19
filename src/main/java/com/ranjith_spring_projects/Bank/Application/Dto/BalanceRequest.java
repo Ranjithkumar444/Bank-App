@@ -7,5 +7,5 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 public class BalanceRequest {
-    private String passcode; // Only passcode is required
+    private String passcode;
 }

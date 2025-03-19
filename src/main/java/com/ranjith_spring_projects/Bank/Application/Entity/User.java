@@ -1,6 +1,7 @@
 package com.ranjith_spring_projects.Bank.Application.Entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -46,6 +47,7 @@ public class User {
     // One-to-One relationship with the Users table
     @OneToOne
     @JoinColumn(name = "users_id", nullable = false)
+    @JsonManagedReference
     private Users users;
 
     @CreationTimestamp
