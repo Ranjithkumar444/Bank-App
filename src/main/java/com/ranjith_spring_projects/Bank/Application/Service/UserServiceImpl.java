@@ -36,7 +36,6 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("User not authenticated.");
         }
 
-        // Fetch the Users entity from the database using the email from the request
         String emailFromRequest = userRequest.getEmail();
         Users registeredUser = usersRepo.findByEmail(emailFromRequest);
         if (registeredUser == null) {
@@ -52,7 +51,6 @@ public class UserServiceImpl implements UserService {
                     .build();
         }
 
-        // Create the User entity and link it to the fetched Users entity
         User user = User.builder()
                 .firstName(userRequest.getFirstName())
                 .lastName(userRequest.getLastName())
@@ -99,22 +97,19 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public BigDecimal balanceCheck(BalanceRequest balanceRequest, String token) {
-        // Extract email from the token
         String email = jwtService.extractEmail(token);
         if (email == null) {
             throw new RuntimeException("User not authenticated.");
         }
 
-        // Fetch the user (bank account) by email
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found."));
 
-        // Validate passcode
+
         if (!user.getPasscode().equals(balanceRequest.getPasscode())) {
             throw new RuntimeException("Invalid passcode.");
         }
 
-        // Return the account balance
         return user.getAccountBalance();
     }
 
@@ -125,15 +120,12 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("User not authenticated.");
         }
 
-        // Fetch the user (bank account) by email
         User fromUser = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found."));
 
-        // Fetch the recipient user by account number
         User toUser = userRepository.findByAccountNumber(transferRequest.getToAccountNumber())
                 .orElseThrow(() -> new RuntimeException("Invalid recipient account number."));
 
-        // Validate passcode and check balance
         if (fromUser.getPasscode().equals(transferRequest.getPasscode())) {
             if (fromUser.getAccountBalance().compareTo(transferRequest.getAmount()) >= 0) {
                 // Perform the transfer

@@ -40,7 +40,6 @@ public class Users {
     @Column(nullable = false)
     private boolean twoFactorEnabled = false;
 
-    // One-to-One relationship with the User (bank account) table
     @OneToOne(mappedBy = "users", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonBackReference
     private User user;

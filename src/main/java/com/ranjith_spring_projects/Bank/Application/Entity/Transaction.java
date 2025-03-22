@@ -29,16 +29,16 @@ public class Transaction {
     private BigDecimal amount;
 
     @Column(nullable = false)
-    private String transactionType; // e.g., "DEPOSIT", "WITHDRAWAL", "TRANSFER"
+    private String transactionType;
 
     @Column(nullable = false)
-    private String transactionStatus; // e.g., "SUCCESS", "FAILED", "PENDING"
+    private String transactionStatus;
 
     @Column(nullable = false)
     private LocalDateTime transactionDate;
 
     @Column(nullable = false)
-    private String description; // e.g., "Salary", "Grocery Shopping", "Transfer to John Doe"
+    private String description;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)

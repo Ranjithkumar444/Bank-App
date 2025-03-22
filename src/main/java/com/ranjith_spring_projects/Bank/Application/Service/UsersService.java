@@ -9,12 +9,9 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.security.SecureRandom;
-import java.time.LocalDateTime;
 
 @Service
 public class UsersService {
@@ -41,7 +38,7 @@ public class UsersService {
         if (repo.existsByEmail(user.getEmail())) {
             throw new RuntimeException("The user email is already taken.");
         }
-        user.setPassword(passwordEncoder.encode(user.getPassword()));  // Use the correct encoder
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         return repo.save(user);
     }
 

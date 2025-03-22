@@ -1,7 +1,6 @@
 package com.ranjith_spring_projects.Bank.Application.Service;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.Getter;
 import org.springframework.stereotype.Service;
 
