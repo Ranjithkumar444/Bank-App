@@ -7,9 +7,7 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
-import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
-import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
@@ -18,7 +16,6 @@ import java.util.function.Function;
 
 @Service
 public class JWTService {
-    // Secret key (ensure it is kept confidential)
     private static final String SECRET_KEY = "kJ9VbD8rA56yLqR7tPfXqkD3JnVsFwR23Ht7MzLsNpQ=";
 
     public String generateToken(String email) {
@@ -28,7 +25,7 @@ public class JWTService {
 
     private String createToken(Map<String, Object> claims, String subject) {
         Date now = new Date(System.currentTimeMillis());
-        Date expiration = new Date(now.getTime() + 1000 * 60 * 60 * 24); // 24 hours expiration time
+        Date expiration = new Date(now.getTime() + 1000 * 60 * 60 * 24);
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(subject)

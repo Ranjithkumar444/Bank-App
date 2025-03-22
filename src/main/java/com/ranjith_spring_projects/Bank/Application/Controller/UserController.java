@@ -1,15 +1,10 @@
 package com.ranjith_spring_projects.Bank.Application.Controller;
 
 import com.ranjith_spring_projects.Bank.Application.Dto.*;
-import com.ranjith_spring_projects.Bank.Application.Entity.Users;
 import com.ranjith_spring_projects.Bank.Application.Service.UserService;
-import com.ranjith_spring_projects.Bank.Application.Service.UsersService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 
 @RestController
 @RequestMapping("/api/user")

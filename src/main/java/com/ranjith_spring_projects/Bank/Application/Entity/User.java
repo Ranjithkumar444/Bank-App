@@ -6,7 +6,6 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.springframework.data.annotation.LastModifiedDate;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -44,7 +43,7 @@ public class User {
     @JsonIgnore
     private List<Transaction> transactions;
 
-    // One-to-One relationship with the Users table
+
     @OneToOne
     @JoinColumn(name = "users_id", nullable = false)
     @JsonManagedReference

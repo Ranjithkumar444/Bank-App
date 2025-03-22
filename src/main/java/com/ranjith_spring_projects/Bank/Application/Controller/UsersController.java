@@ -11,9 +11,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -40,9 +37,9 @@ public class UsersController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody Users user) {
         try {
-            String email = usersService.verify(user); // Verify user credentials (email and password)
+            String email = usersService.verify(user);
             String token = jwtService.generateToken(email);
-            Users existingUser = repo.findByEmail(email); // Fetch the user from the database
+            Users existingUser = repo.findByEmail(email);
 
             if (existingUser == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
